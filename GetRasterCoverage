@@ -1,0 +1,37 @@
+import gdal, osr
+import shapefile as shp
+
+input = gdal.Open('data/5x4.tif')
+output = 'shp/5x4.shp'
+
+def getRasterCoverage(input, output):
+    # 获取仿射参数
+    a, b, c, d, e, f = input.GetGeoTransform()
+    # 获取原影像投影信息
+    projection = input.GetProjection()
+
+    # 获取栅格的行列数
+    col, row = input.RasterYSize, input.RasterXSize
+
+    # 计算左上角和右下角坐标
+    geox1, geoy1 = a, d
+    geox2, geoy2 = a + b * (row) + c * (col), d + e * (row) + f * (col)
+
+    # 使用shapefile库创建一个矢量文件并定义属性字段
+    vector = shp.Writer(output)
+    vector.field('Numbers')
+
+    # 通过栅格四个顶点坐标得到覆盖范围，写入到矢量文件中
+    poly = [[geox1, geoy1], [geox2, geoy1], [geox2, geoy2], [geox1, geoy2]]
+    vector.poly([poly])
+    vector.record('range')
+
+    # 写入投影信息
+    proj = osr.SpatialReference()
+    proj.ImportFromProj4(projection)
+    wkt = proj.ExportToWkt()
+    f = open(output.replace(".shp", ".prj"), "w")
+    f.write(wkt)
+    f.close()
+
+getRasterCoverage(input, output)
